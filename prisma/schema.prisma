@@ -1,0 +1,281 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DegreeType {
+  UG
+  MASTERS
+  PHD
+}
+
+enum UniversityType {
+  PUBLIC
+  PRIVATE
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum SavedItemType {
+  UNIVERSITY
+  COURSE
+  ACCOMMODATION
+  JOB
+}
+
+enum ApplicationStatus {
+  DRAFT
+  APPLIED
+  OFFER
+  REJECTED
+  WAITLISTED
+}
+
+enum ChecklistItemType {
+  PASSPORT
+  TRANSCRIPT
+  SOP
+  LOR
+  IELTS
+  RESUME
+  VISA_FORM
+  FINANCIAL_PROOF
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  password  String?  // For email/password login
+  image     String?
+  role      UserRole @default(STUDENT)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  savedItems   SavedItem[]
+  applications Application[]
+  checklist    ChecklistItem[]
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Country {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  iso2             String   @unique
+  region           String   @default("Asia")
+  capital          String?
+  currency         String?
+  officialLanguages String[]
+
+  overview         String
+  costOfLivingNote String
+  tuitionAvgNote   String
+  visaProcess      String
+  workPermitRules  String
+  topStudentCities String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  universities University[]
+  scholarships Scholarship[]
+}
+
+model University {
+  id              String         @id @default(cuid())
+  slug            String         @unique
+  name            String
+  rankingGlobal   Int?
+  description     String
+  type            UniversityType
+  city            String
+  websiteUrl      String?
+  logoUrl         String?
+  englishTaught   Boolean        @default(false)
+  lat             Float?
+  lng             Float?
+
+  countryId String
+  country   Country @relation(fields: [countryId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  courses       Course[]
+  accommodations Accommodation[]
+  jobs          Job[]
+  scholarships  Scholarship[] @relation("UniversityScholarships")
+}
+
+model Course {
+  id                 String     @id @default(cuid())
+  slug               String     @unique
+  name               String
+  degreeType         DegreeType
+  durationMonths     Int
+  intakeMonths       String[]
+  tuitionFeeUsd      Int
+  eligibility        String
+  ieltsMin           Float?
+  toeflMin           Int?
+  languageNote       String?
+  applicationDeadlines String?
+
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Accommodation {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  type          String
+  distanceKm    Float
+  monthlyRentUsd Int
+  furnished     Boolean  @default(false)
+  safetyScore   Int      @default(70)
+  address       String?
+  lat           Float?
+  lng           Float?
+
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Job {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  companyName    String
+  employmentType String // PART_TIME / FULL_TIME (kept flexible for MVP)
+  salaryNote     String?
+  distanceKm     Float
+  visaSponsorship Boolean @default(false)
+  applyUrl       String?
+  city           String
+
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Scholarship {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  amountNote  String?
+  eligibility String
+  deadline    String?
+  websiteUrl  String?
+
+  countryId String?
+  country   Country? @relation(fields: [countryId], references: [id], onDelete: SetNull)
+
+  universities University[] @relation("UniversityScholarships")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SavedItem {
+  id        String        @id @default(cuid())
+  type      SavedItemType
+  entityId  String
+  createdAt DateTime      @default(now())
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@unique([userId, type, entityId])
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  status      ApplicationStatus @default(DRAFT)
+  notes       String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  userId       String
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  universityId String?
+  courseId     String?
+
+  // These are stored as IDs for flexibility (course/university optional)
+  targetUniversitySlug String?
+  targetCourseSlug     String?
+
+  @@index([userId, status])
+}
+
+model ChecklistItem {
+  id        String            @id @default(cuid())
+  type      ChecklistItemType
+  done      Boolean           @default(false)
+  note      String?
+  updatedAt DateTime          @updatedAt
+
+  userId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+}
+
