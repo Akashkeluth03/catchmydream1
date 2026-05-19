@@ -22,15 +22,15 @@ export default async function CountriesPage() {
           <a
             key={c.id}
             href={`/countries/${c.slug}`}
-            className="rounded-3xl border border-black/10 bg-white/70 p-6 shadow-sm backdrop-blur transition hover:shadow-md dark:border-white/10 dark:bg-white/5"
+            className="group rounded-3xl border border-black/5 bg-gradient-to-br from-white/95 to-zinc-50 p-6 shadow-sm transition-transform hover:scale-105 hover:shadow-lg dark:border-zinc-700 dark:from-zinc-900 dark:to-zinc-800"
           >
-            <p className="text-lg font-semibold">{c.name}</p>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{c.name}</p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
               Official languages: {c.officialLanguages.slice(0, 3).join(", ")}
               {c.officialLanguages.length > 3 ? "…" : ""}
             </p>
-            <div className="mt-4 text-sm text-zinc-700 dark:text-zinc-300">
-              <span className="rounded-full border border-black/10 bg-black/5 px-3 py-1 dark:border-white/10 dark:bg-white/10">
+            <div className="mt-4 text-sm">
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1 font-medium text-sm bg-indigo-50 text-indigo-700 border border-indigo-100 group-hover:bg-indigo-100 dark:bg-indigo-600 dark:text-white dark:border-indigo-500">
                 View details
               </span>
             </div>

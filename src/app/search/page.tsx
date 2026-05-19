@@ -63,6 +63,7 @@ export default async function SearchPage({
     where: {
       AND: [
         country ? { university: { country: { slug: country } } } : {},
+        city ? { university: { city: city } } : {},
         universitySlug ? { university: { slug: universitySlug } } : {},
       ],
     },
@@ -73,6 +74,7 @@ export default async function SearchPage({
     where: {
       AND: [
         country ? { university: { country: { slug: country } } } : {},
+        city ? { city: city } : {},
         universitySlug ? { university: { slug: universitySlug } } : {},
       ],
     },

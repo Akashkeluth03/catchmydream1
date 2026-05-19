@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const countries = await prisma.country.findMany({
-    select: { slug: true, name: true },
+    select: { slug: true, name: true, topStudentCities: true },
     orderBy: { name: "asc" },
   });
 

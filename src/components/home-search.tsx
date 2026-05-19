@@ -7,6 +7,7 @@ import { Search } from "lucide-react";
 type CountryOption = {
   slug: string;
   name: string;
+  topStudentCities: string[];
 };
 
 type UniversityOption = {
@@ -33,6 +34,24 @@ const COUNTRY_CURRENCIES: Record<string, { code: string; symbol: string }> = {
   bangladesh: { code: "BDT", symbol: "৳" },
 };
 
+// Approximate USD -> local currency rates (1 USD = X local units).
+// Update these or replace with a live rates API if available.
+const CURRENCY_RATES: Record<string, number> = {
+  singapore: 1.35,
+  malaysia: 4.5,
+  "united-arab-emirates": 3.67,
+  japan: 150,
+  "south-korea": 1300,
+  thailand: 34,
+  india: 83,
+  china: 7,
+  vietnam: 24000,
+  philippines: 56,
+  indonesia: 15500,
+  pakistan: 280,
+  bangladesh: 105,
+};
+
 export function HomeSearch({ 
   countries,
   universities 
@@ -49,13 +68,20 @@ export function HomeSearch({
   const [focused, setFocused] = React.useState<string | null>(null);
 
   const currency = country ? COUNTRY_CURRENCIES[country] : { code: "USD", symbol: "$" };
+  const conversionRate = country ? (CURRENCY_RATES[country] ?? 1) : 1;
 
-  // Filter cities by selected country
+  // Filter cities by selected country (using both university data and country's top cities)
   const cityOptions = React.useMemo(() => {
     if (!country) return [];
+    const selectedCountryObj = countries.find(c => c.slug === country);
+    const citiesFromCountry = selectedCountryObj?.topStudentCities || [];
     const unisInCountry = universities.filter(u => u.country.slug === country);
-    return Array.from(new Set(unisInCountry.map(u => u.city))).filter(Boolean).sort();
-  }, [country, universities]);
+    const citiesFromUnis = unisInCountry.map(u => u.city);
+    
+    return Array.from(new Set([...citiesFromCountry, ...citiesFromUnis]))
+      .filter(Boolean)
+      .sort();
+  }, [country, countries, universities]);
 
   // When country changes, reset city and deeper fields
   React.useEffect(() => {
@@ -81,6 +107,49 @@ export function HomeSearch({
     }
     return filtered;
   }, [country, city, universities]);
+
+  // Display universities in the UI: if a city is selected but there are none
+  // in that city, fall back to showing all universities in the country.
+  const displayUniversities = React.useMemo(() => {
+    if (!country) return universities;
+    const byCountry = universities.filter(u => u.country.slug === country);
+    if (city) {
+      const byCity = byCountry.filter(u => u.city === city);
+      return byCity.length > 0 ? byCity : byCountry;
+    }
+    return byCountry;
+  }, [country, city, universities]);
+
+  // External university suggestions fetched from Google when none exist in DB
+  const [externalUniversities, setExternalUniversities] = React.useState<Array<{ name: string; city?: string; id: string }>>([]);
+  const [externalLoading, setExternalLoading] = React.useState(false);
+
+  // If no universities found for selected city, try fetching suggestions
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchExternal() {
+      if (!country || !city) return;
+      if (displayUniversities.length > 0) return;
+      setExternalLoading(true);
+      try {
+        const res = await fetch(`/api/google/universities?country=${encodeURIComponent(country)}&city=${encodeURIComponent(city)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setExternalUniversities(data || []);
+      } catch (e) {
+        // ignore
+      } finally {
+        if (!cancelled) setExternalLoading(false);
+      }
+    }
+    fetchExternal();
+    return () => {
+      cancelled = true;
+    };
+  }, [country, city, displayUniversities.length]);
+
+  const optionsToShow = displayUniversities.length > 0 ? displayUniversities : externalUniversities;
 
   // When city changes, reset university if not in new city
   React.useEffect(() => {
@@ -172,9 +241,9 @@ export function HomeSearch({
             onFocus={() => setFocused("country")}
             onBlur={() => setFocused(null)}
           >
-            <option value="" className="text-black">Select a country...</option>
+            <option value="">Select a country...</option>
             {countries.map((c) => (
-              <option key={c.slug} value={c.slug} className="text-black">
+              <option key={c.slug} value={c.slug}>
                 {c.name}
               </option>
             ))}
@@ -199,11 +268,11 @@ export function HomeSearch({
             onBlur={() => setFocused(null)}
             disabled={!country || cityOptions.length === 0}
           >
-            <option value="" className="text-black">
+            <option value="">
               {!country ? "Select a country first..." : cityOptions.length === 0 ? "No cities available" : "Any City / Select..."}
             </option>
             {cityOptions.map((cName) => (
-              <option key={cName} value={cName} className="text-black">
+              <option key={cName} value={cName}>
                 {cName}
               </option>
             ))}
@@ -228,11 +297,18 @@ export function HomeSearch({
             onBlur={() => setFocused(null)}
             disabled={!country}
           >
-            <option value="" className="text-black">
-              {!country ? "Select a country first..." : "Select a university..."}
+            <option value="">
+              {!country
+                ? "Select a country first..."
+                : city && filteredUniversities.length === 0
+                ? "No universities in selected city — showing all in country"
+                : displayUniversities.length === 0
+                ? "No universities available"
+                : "Select a university..."
+              }
             </option>
-            {filteredUniversities.map((u) => (
-              <option key={u.slug} value={u.slug} className="text-black">
+            {optionsToShow.map((u: any) => (
+              <option key={u.slug ?? u.id} value={u.slug ?? u.name}>
                 {u.name}
               </option>
             ))}
@@ -257,11 +333,11 @@ export function HomeSearch({
             onBlur={() => setFocused(null)}
             disabled={!university || courseOptions.length === 0}
           >
-            <option value="" className="text-black">
+            <option value="">
               {!university ? "Select a university first..." : courseOptions.length === 0 ? "No courses available" : "Any Course / Select..."}
             </option>
             {courseOptions.map((c) => (
-              <option key={c.slug} value={c.slug} className="text-black">
+              <option key={c.slug} value={c.slug}>
                 {c.name}
               </option>
             ))}
@@ -290,12 +366,12 @@ export function HomeSearch({
               onBlur={() => setFocused(null)}
               disabled={!university || budgetOptions.length === 0}
             >
-              <option value="" className="text-black">
+              <option value="">
                 {!university ? "Select a university first..." : budgetOptions.length === 0 ? "No budget info available" : "Select a budget..."}
               </option>
               {budgetOptions.map((b) => (
-                <option key={b} value={b} className="text-black">
-                  {b.toLocaleString()} {currency.code}
+                <option key={b} value={b}>
+                  {(Math.round(b * conversionRate)).toLocaleString()} {currency.code}
                 </option>
               ))}
             </select>
