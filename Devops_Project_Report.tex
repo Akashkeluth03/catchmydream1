@@ -1,0 +1,594 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage{mathptmx} % Times New Roman
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage[table]{xcolor} % Enabled row coloring
+\usepackage{tabularx}      % For tables with auto-wrapping columns
+\usepackage{enumitem}      % For fine control over list spacing
+\usepackage{parskip}       % Align paragraph starts (remove indent, add spacing)
+\usepackage{microtype}     % Perfect right-margin justification
+\usepackage[hyphens]{url}  % Allow URL wrapping at hyphens
+\usepackage[hidelinks]{hyperref}
+\usepackage{titlesec}
+\usepackage{float}
+
+% --- Formatting Configuration ---
+\onehalfspacing % 1.5 Line Spacing
+
+% Headings Bold [16 Sizing]
+\titleformat{\section}
+  {\normalfont\fontsize{16}{20}\bfseries}
+  {\thesection}
+  {1em}
+  {}
+
+% Sub Headings Bold [14 Sizing]
+\titleformat{\subsection}
+  {\normalfont\fontsize{14}{18}\bfseries}
+  {\thesubsection}
+  {1em}
+  {}
+
+% Adjust spacing around section headings
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+
+% Code Listing Styles
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.96}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% --- Document Start ---
+\begin{document}
+
+% ====================================================================
+% ABSTRACT
+% ====================================================================
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+
+The deployment and maintenance of modern full-stack web applications demand rapid, reliable, and automated release cycles. This DevOps project demonstrates the design and implementation of a fully automated Continuous Integration and Continuous Deployment (CI/CD) pipeline for the \textbf{CatchMyDream} web application. CatchMyDream is a next-generation platform designed to assist students in exploring international academic and career opportunities, developed using a modern tech stack comprising Next.js, React, Prisma ORM, PostgreSQL (NeonDB), and Node.js. 
+
+To automate and secure the delivery workflow, a multi-stage Jenkins pipeline was constructed. GitHub serves as the Version Control System (VCS), tracking code changes and triggering pipeline execution via webhooks exposed securely through ngrok. Upon detecting code modifications, Jenkins automatically pulls the latest version, installs dependencies, builds the production-ready Next.js application, executes static code analysis using SonarQube, performs dependency and vulnerability scanning using Trivy, packages the application inside lightweight Docker containers, and runs the containerized environment. 
+
+SonarQube was instrumental in detecting code smells, quality bugs, and critical security hotspots, such as hardcoded environment secrets in the Dockerfile. These issues were successfully remediated by removing sensitive variables from the repository and leveraging runtime environment configuration. In addition, Trivy provided security checks against known CVEs in the codebase dependencies and built container images. The automated pipeline mitigates human configuration errors, guarantees environmental consistency, significantly reduces deployment overhead, and accelerates feedback loops for developers.
+
+\clearpage
+
+% ====================================================================
+% TABLE OF CONTENTS
+% ====================================================================
+\tableofcontents
+\clearpage
+
+% ====================================================================
+% OBJECTIVES
+% ====================================================================
+\section{Objectives}
+
+DevOps methodology bridges the gap between software development and operations, creating automated workflows for high-quality, rapid software delivery. The objectives of implementing a CI/CD pipeline for the CatchMyDream application include:
+
+\subsection{Why CI/CD Pipelines are Important}
+Traditional deployment pipelines rely on manual steps, introducing operational bottlenecks:
+\begin{itemize}[noitemsep, topsep=1pt, parsep=0pt, partopsep=0pt, leftmargin=*]
+    \item \textbf{Slow Delivery:} Manual compilation and transfer delay software release cycles.
+    \item \textbf{Configuration Drift:} Discrepancies in environments cause unexpected production bugs.
+    \item \textbf{Late Bug Detection:} Integration errors discovered late are costly to resolve.
+    \item \textbf{High Overhead:} Operations teams spend excessive time troubleshooting manual runs.
+\end{itemize}
+
+\subsection{Goals of Automation}
+Integrating a Jenkins-driven automated pipeline achieves the following goals:
+\begin{enumerate}[noitemsep, topsep=1pt, parsep=0pt, partopsep=0pt, leftmargin=*]
+    \item \textbf{Build Automation:} Ensure the codebase compiles successfully on every commit.
+    \item \textbf{Continuous Integration:} Merge changes frequently with automated static and security checks.
+    \item \textbf{Static Analysis:} Run SonarQube to block code smells and security hotspots.
+    \item \textbf{Container Parity:} Package the app using Docker for identical runtime environments.
+    \item \textbf{Vulnerability Management:} Scan filesystems and container layers via Trivy.
+    \item \textbf{Deployment Security:} Automate container startup and shutdown to prevent deployment errors.
+\end{enumerate}
+
+\subsection{Benefits of DevOps Practices}
+Transitioning to DevOps practices yields the following key advantages:
+\begin{itemize}[noitemsep, topsep=1pt, parsep=0pt, partopsep=0pt, leftmargin=*]
+    \item \textbf{Reliability:} Standardized scripts eliminate deployment and setup errors.
+    \item \textbf{Deployment Speed:} Automated deployment loops enable rapid time-to-market.
+    \item \textbf{Improved Security:} Pipeline scanners check packages and image vulnerabilities early.
+    \item \textbf{Resource Parity:} Isolated container dependencies prevent execution environment clashes.
+\end{itemize}
+
+% ====================================================================
+% TOOLS AND TECHNOLOGIES USED
+% ====================================================================
+\section{Tools and Technologies Used}
+
+To accomplish the objectives of this DevOps project, a variety of industry-standard tools were integrated. Table~\ref{tab:tools} lists the primary technologies utilized and their specific roles in the project ecosystem.
+
+\begin{table}[H]
+\centering
+\caption{DevOps Tools and Technologies Used}
+\label{tab:tools}
+\vspace{0.2cm}
+\begin{singlespace}
+\small
+\renewcommand{\arraystretch}{1.15} % Optimized padding
+\rowcolors{2}{gray!7}{white}       % Soft alternating row shading
+\begin{tabularx}{\textwidth}{p{3.2cm} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\rowcolor{gray!20} % Accentuate the header row
+\textbf{Tool / Tech} & \textbf{Category / Stack} & \textbf{Specific Purpose in Project} \\
+\midrule
+GitHub & Source Code Management & Main repository hosting, branch management, and Webhook triggers. \\
+Jenkins & Automation Server & Orchestrating CI/CD pipeline stages (build, scan, containerize, run). \\
+SonarQube & Static Analysis (SAST) & Code quality scanning, finding bugs, code smells, and security hotspots. \\
+Trivy & Security Scanner & Scanning filesystem dependencies and Docker images for CVE vulnerabilities. \\
+Docker & Containerization & Building container images of the Next.js app to ensure environment parity. \\
+Docker Hub & Container Registry & Storing versioned container images of the application. \\
+ngrok & Reverse Proxy & Exposing the local Jenkins instance to GitHub to enable Webhook integrations. \\
+Next.js & Full-stack Framework & Core framework used to develop the user interfaces and API endpoints of CatchMyDream. \\
+React & UI Library & Declaring responsive, stateful web interfaces. \\
+Prisma ORM & Database ORM & Mapping PostgreSQL databases to TypeScript objects, running migrations. \\
+PostgreSQL (NeonDB) & Relational Database & Serverless relational database hosting relational data. \\
+Node.js & Runtime Environment & Underlying Javascript execution environment. \\
+Render & Cloud Platform & Hosting the containerized production build of the Next.js web application. \\
+npm & Package Manager & Managing Node dependencies and executing development/production scripts. \\
+\bottomrule
+\end{tabularx}
+\end{singlespace}
+\end{table}
+
+
+\clearpage
+
+% ====================================================================
+% PROJECT TECH STACK
+% ====================================================================
+\section{Project Tech Stack}
+
+The \textbf{CatchMyDream} web application is structured as a modern full-stack web application designed for high performance, ease of hosting, and robust data persistence. 
+
+\subsection{Frontend Architecture}
+The user interface is built using \textbf{React 19} and \textbf{Next.js 16 (App Router)}. Key frontend features include:
+\begin{itemize}
+    \item \textbf{Server-Side Rendering (SSR) \& Static Site Generation (SSG):} Leveraging Next.js App Router for server-rendered components, enhancing performance and SEO indexes.
+    \item \textbf{Tailwind CSS:} A utility-first CSS framework for rapid styling, resulting in a cohesive design system and mobile-responsive grid layouts.
+    \item \textbf{React Leaflet:} Integrated interactive maps displaying geographical locations of universities, accommodations, and local jobs.
+\end{itemize}
+
+\subsection{Backend and Database Integration}
+The backend logic utilizes Next.js API Routes and server actions to interact with database records:
+\begin{itemize}
+    \item \textbf{Next.js API Routes:} Lightweight backend routes handling authentication, user profiles, application submissions, and search queries.
+    \item \textbf{Prisma ORM:} Serves as the database abstraction layer. Prisma generates a type-safe database client based on the database schema declared in \texttt{prisma/schema.prisma}.
+    \item \textbf{PostgreSQL (NeonDB):} A cloud-native PostgreSQL service chosen for production database requirements. Database migrations are easily synchronized using \texttt{prisma db push} or \texttt{prisma migrate dev} during development.
+    \item \textbf{NextAuth.js (v5):} Handles session authentication, utilizing standard credentials provider (with \texttt{bcryptjs} password hashing) and supporting JWT tokens.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{images/architecture.png}
+    \caption{Architecture Diagram of the CatchMyDream Full-Stack Application}
+    \label{fig:arch}
+\end{figure}
+
+\clearpage
+
+% ====================================================================
+% GITHUB REPOSITORY DETAILS
+% ====================================================================
+\section{GitHub Repository Details}
+
+The application code is managed in a public GitHub repository. This enables effective version control, issue tracking, collaboration, and forms the starting trigger for the CI/CD pipeline.
+
+\subsection{Repository Information}
+\begin{itemize}
+    \item \textbf{Repository Name:} \texttt{catchmydream1}
+    \item \textbf{Repository URL:} \url{https://github.com/Akashkeluth03/catchmydream1}
+    \item \textbf{Active Branch for CI/CD:} \texttt{akash}
+\end{itemize}
+
+\subsection{Repository Structure}
+The workspace features the following directory layout:
+\begin{itemize}
+    \item \texttt{src/}: Contains React components, routing layouts, utility helper functions, and custom pages.
+    \item \texttt{prisma/}: Contains the Prisma database schema (\texttt{schema.prisma}) and seed data script (\texttt{seed.js}) to prepopulate tables (countries, universities, scholarships, and job opportunities).
+    \item \texttt{public/}: Holds static assets such as images, icons, logos, and global stylesheets.
+    \item \texttt{package.json}: Declares project dependencies, devDependencies, and custom scripts.
+    \item \texttt{Dockerfile}: File containing execution commands to containerize the Next.js build.
+    \item \texttt{Jenkinsfile}: Declarative script containing the Jenkins automated workflow instructions.
+    \item \texttt{sonar-project.properties}: Configuration file for SonarQube Scanner.
+\end{itemize}
+
+\subsection{Webhook Configuration}
+To notify Jenkins immediately of code updates, a GitHub Webhook is registered under the repository settings. The webhook is configured to send a POST request with the JSON payload representing git events.
+\begin{itemize}
+    \item \textbf{Payload URL:} \url{https://your-ngrok-url.ngrok-free.app/github-webhook/}
+    \item \textbf{Content Type:} \texttt{application/json}
+    \item \textbf{Trigger Events:} Just the \textit{push} event.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/github_webhook.png}
+    \caption{GitHub Webhook configuration page pointing to the ngrok tunnel endpoint}
+    \label{fig:webhook_screenshot}
+\end{figure}
+
+
+\clearpage
+
+% ====================================================================
+% JENKINS CONFIGURATION
+% ====================================================================
+\section{Jenkins Configuration}
+
+Jenkins serves as the central automation orchestrator. It listens for webhook notifications, checks out code changes, and runs the step-by-step pipeline.
+
+\subsection{Installation and Startup}
+Jenkins LTS was installed on macOS using Homebrew:
+\begin{lstlisting}[language=bash]
+# Install Jenkins LTS via Homebrew
+brew install jenkins-lts
+
+# Start the Jenkins system service
+brew services start jenkins-lts
+\end{lstlisting}
+Once started, the Jenkins web dashboard was accessed locally at \url{http://localhost:8080}.
+
+\subsection{Required Plugins}
+The following plugins were installed on Jenkins:
+\begin{itemize}
+    \item \textbf{Git Plugin:} Handles checking out source code from git repositories.
+    \item \textbf{Pipeline Plugin:} Allows writing complex CI/CD logic inside a single file (\texttt{Jenkinsfile}).
+    \item \textbf{GitHub Integration Plugin:} Automates job triggers when webhooks receive push events.
+    \item \textbf{Docker Plugin:} Integrates Docker actions and commands within the pipeline.
+    \item \textbf{NodeJS Plugin:} Installs Node.js environments inside Jenkins workspace builds.
+\end{itemize}
+
+\subsection{Pipeline Execution Script}
+The declarative pipeline is defined within the repository's \texttt{Jenkinsfile}:
+\begin{lstlisting}[language=bash, caption={Declarative Jenkinsfile configured for CatchMyDream CI/CD}]
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'node-20' 
+    }
+
+    environment {
+        DOCKER_IMAGE = 'catchmydream'
+        DOCKER_TAG = 'latest'
+        SONAR_SCANNER_HOME = tool 'sonar-scanner' 
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Build Next.js App') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('SonarQube Static Analysis') {
+            steps {
+                withSonarQubeEnv('sonar-server') { 
+                    sh "${SONAR_SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=catchmydream \
+                        -Dsonar.projectName=catchmydream \
+                        -Dsonar.sources=. \
+                        -Dsonar.exclusions=**/node_modules/**,.next/** \
+                        -Dsonar.host.url=http://localhost:9000"
+                }
+            }
+        }
+
+        stage('Trivy Security Scan') {
+            steps {
+                script {
+                    echo 'Running Trivy filesystem scan...'
+                    sh 'trivy fs --severity HIGH,CRITICAL --format table .'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh "trivy image --severity HIGH,CRITICAL --format table ${DOCKER_IMAGE}:${DOCKER_TAG}"
+            }
+        }
+
+        stage('Docker Run') {
+            steps {
+                script {
+                    sh 'docker ps -aq --filter name=catchmydream-container | xargs -r docker rm -f'
+                    sh "docker run -d -p 3001:3000 --name catchmydream-container ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline execution failed!'
+        }
+    }
+}
+\end{lstlisting}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/Jenkins_stage.png}
+    \caption{Jenkins Stage View showing the successful execution of all stages}
+    \label{fig:jenkins_screenshot}
+\end{figure}
+
+
+\clearpage
+
+% ====================================================================
+% CODE QUALITY ANALYSIS (SONARQUBE)
+% ====================================================================
+\section{Code Quality Analysis}
+
+Static Application Security Testing (SAST) is essential to detect bugs, code smells, vulnerabilities, and security hotspots before they are introduced into production. For the CatchMyDream project, \textbf{SonarQube} was deployed locally.
+
+\subsection{Configuration and Run Command}
+SonarQube was accessed at \url{http://localhost:9000}. To run static scans on the workspace directory, the SonarQube Scanner CLI command was configured:
+\begin{lstlisting}[language=bash]
+sonar-scanner \
+  -Dsonar.projectKey=catchmydream \
+  -Dsonar.projectName=catchmydream \
+  -Dsonar.sources=. \
+  -Dsonar.host.url=http://localhost:9000
+\end{lstlisting}
+
+\subsection{Issues Identified by SonarQube}
+The scan identified several code quality and security flags in the repository:
+\begin{enumerate}
+    \item \textbf{Security Hotspot (Hardcoded Secrets):} SonarQube flagged a critical security hotspot in the project \texttt{Dockerfile}:
+    \begin{lstlisting}[language=Docker]
+    ENV DATABASE_URL="postgresql://neondb_owner:npg_9vO5DLdAUMlf@..."
+    ENV AUTH_SECRET="secret123"
+    \end{lstlisting}
+    Exposing database URLs and session keys in plaintext inside version control repositories introduces severe security exposure.
+    \item \textbf{Dependency Warnings:} Several npm dependency warnings due to legacy third-party library configurations.
+    \item \textbf{Code Smells and Maintainability:} Unused variables, duplicate css imports, and lack of strict error handling in certain Next.js API endpoints.
+\end{enumerate}
+
+\subsection{Remediation Actions}
+To resolve the identified vulnerabilities, the following steps were taken:
+\begin{itemize}
+    \item \textbf{Secrets Decoupling:} The hardcoded \texttt{DATABASE\_URL} and \texttt{AUTH\_SECRET} credentials were removed from the \texttt{Dockerfile}. They were migrated to a secure env file configuration (\texttt{.env}) and loaded at container runtime instead of image build time:
+    \begin{lstlisting}[language=bash]
+    # Executing docker run with runtime secrets loading
+    docker run -d -p 3001:3000 --env-file .env --name catchmydream-container catchmydream
+    \end{lstlisting}
+    \item \textbf{Dependency Clean up:} Outdated packages were updated using package-lock revisions, and unused dependencies were purged.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/sonar_qube.png}
+    \caption{SonarQube Dashboard showing clean code indicators, zero security vulnerabilities, and fixed hotspots}
+    \label{fig:sonarqube_screenshot}
+\end{figure}
+
+\clearpage
+
+% ====================================================================
+% DEPENDENCY AND VULNERABILITY SCANNING (TRIVY)
+% ====================================================================
+\section{Dependency and Vulnerability Scanning}
+
+While SonarQube focuses on static syntax analysis, code structures, and credentials leaks, \textbf{Trivy} is integrated to analyze binary packages, package managers (\texttt{package-lock.json}), and OS-level dependencies packaged inside the container filesystem.
+
+\subsection{Scan Process and Severity Levels}
+Trivy operates in two stages within the Jenkins pipeline:
+\begin{enumerate}
+    \item \textbf{Filesystem Scan (fs):} Analyzes Node dependencies in the workspace before docker packaging.
+    \item \textbf{Image Scan (image):} Inspects the finalized docker layers for base OS vulnerabilities (e.g., node base image vulnerabilities).
+\end{enumerate}
+
+The severity levels evaluated by Trivy are categorized into \textbf{Low}, \textbf{Medium}, \textbf{High}, and \textbf{Critical}. The scan commands were executed as:
+\begin{lstlisting}[language=bash]
+# Scan workspace filesystem dependencies for HIGH and CRITICAL alerts
+trivy fs --severity HIGH,CRITICAL --format table .
+
+# Scan built Docker image
+trivy image --severity HIGH,CRITICAL --format table catchmydream:latest
+\end{lstlisting}
+
+\subsection{Vulnerabilities Identified and Mitigation}
+\begin{itemize}
+    \item \textbf{Identified Issues:} The Node 20 base container image (\texttt{node:20}) contained outdated Debian system package dependencies, exposing a few high-severity CVEs.
+    \item \textbf{Mitigation Steps:} The Dockerfile base image was updated to a slimmer, more secure version: \texttt{node:20-alpine}, which contains a significantly reduced operating system layout, dropping vulnerabilities count from dozens to near zero. Furthermore, running \texttt{npm audit fix} resolved dependency-level warnings.
+\end{itemize}
+
+
+\clearpage
+
+% ====================================================================
+% DOCKER HUB INTEGRATION
+% ====================================================================
+\section{Docker Hub Integration}
+
+To enable deployment portability across multiple cloud staging systems, the finalized Docker container images need to be hosted in a central container repository, such as \textbf{Docker Hub}.
+
+\subsection{Authentication and Push Workflow}
+Within the pipeline, Jenkins authenticates against the Docker Hub registry using secure credentials management and pushes the image. The manual commands representing this execution flow are:
+\begin{lstlisting}[language=bash]
+# Log in to Docker Hub using secure CLI input
+docker login -u akashkeluth03
+
+# Tag the local image with Docker Hub account prefix and version tag
+docker tag catchmydream:latest akashkeluth03/catchmydream1:latest
+docker tag catchmydream:latest akashkeluth03/catchmydream1:1.0
+
+# Push the tagged image to the remote registry
+docker push akashkeluth03/catchmydream1:latest
+docker push akashkeluth03/catchmydream1:1.0
+\end{lstlisting}
+
+\subsection{Benefits of Remote Image Repositories}
+Hosting images in a container registry provides important advantages:
+\begin{itemize}
+    \item \textbf{Versioned Releases:} Version tags (e.g., \texttt{1.0}) allow rolling back to previous stable container states in production instantly.
+    \item \textbf{Universal Portability:} The compiled image can be pulled and run on any server environment (AWS, GCP, local server, or staging environments) without compiling Next.js files locally.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/docker hub.png}
+    \caption{Docker Hub dashboard showing the pushed image repository 'akashkeluth03/catchmydream1'}
+    \label{fig:dockerhub_screenshot}
+\end{figure}
+
+
+\clearpage
+
+% ====================================================================
+% DEPLOYMENT TO CLOUD PLATFORM
+% ====================================================================
+\section{Deployment to Cloud Platform}
+
+The production version of the full-stack CatchMyDream Next.js web application is hosted and deployed using the \textbf{Render} cloud platform as a containerized Web Service. Render links directly to our GitHub repository, automatically building and running the container using the project's \texttt{Dockerfile} whenever changes are merged.
+
+\subsection{Deployment Workflow and Configuration}
+The Web Service is configured on the Render dashboard with the following workflow:
+\begin{enumerate}
+    \item \textbf{Link Git Repository:} Render is connected to the GitHub repository \texttt{catchmydream1} and branch \texttt{akash}.
+    \item \textbf{Select Runtime Env:} The environment is set to \textbf{Docker}, instructing Render to build and launch the application container using the root \texttt{Dockerfile}.
+    \item \textbf{Configure Environment Variables:} Crucial environment credentials are secure-mapped on the Render Web Service settings:
+    \begin{itemize}
+        \item \texttt{DATABASE\_URL}: Mapped to the serverless PostgreSQL instance hosted on NeonDB.
+        \item \texttt{AUTH\_SECRET}: Client session authentication encryption key.
+        \item \texttt{NEXTAUTH\_URL}: Production URL endpoint.
+        \item \texttt{AUTH\_TRUST\_HOST}: Configured as \texttt{true} to allow OAuth authentication trust.
+    \end{itemize}
+    \item \textbf{Build and Run:} Render automatically pulls the latest commit, runs the docker build layers, and starts the container on their hosting infrastructure.
+\end{enumerate}
+
+\subsection{Deployment Output}
+\begin{itemize}
+    \item \textbf{Public Deployment URL:} \url{https://catchmydream1.onrender.com}
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{images/reder.png}
+    \caption{Render project page showing successful build history and the public deployment URL link}
+    \label{fig:render_screenshot}
+\end{figure}
+
+\clearpage
+
+% ====================================================================
+% AUTOMATION USING WEBHOOKS
+% ====================================================================
+\section{Automation using Webhooks}
+
+The core strength of the implemented DevOps architecture is the end-to-end automation cycle triggered via GitHub webhooks and local ngrok proxy tunnels.
+
+\subsection{Request Routing Flow}
+Because the Jenkins server is running locally on macOS (\url{http://localhost:8080}), external services like GitHub cannot route webhook requests directly to it. To solve this network bridge challenge:
+\begin{enumerate}
+    \item \textbf{ngrok Reverse Proxy:} ngrok is initialized to expose the local Jenkins port to the public Internet:
+    \begin{lstlisting}[language=bash]
+    ngrok http 8080
+    \end{lstlisting}
+    ngrok generates a secure public HTTPS endpoint, such as \url{https://your-ngrok-url.ngrok-free.app}.
+    \item \textbf{GitHub Webhook Registration:} This public URL is mapped to GitHub settings (\url{/github-webhook/}).
+    \item \textbf{Triggering the Loop:}
+    \begin{itemize}
+        \item Developer commits and pushes changes to the \texttt{akash} branch on GitHub.
+        \item GitHub dispatches a POST event containing commit payload data to the ngrok public endpoint.
+        \item ngrok securely forwards the POST request traffic to the local machine at port 8080.
+        \item The Jenkins GitHub Integration plugin intercepts the webhook notification.
+        \item Jenkins starts the CatchMyDream pipeline, running all stages sequentially (Pull, Install, Build, SonarQube, Trivy, Docker build, and Docker run).
+    \end{itemize}
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{images/ngrox.png}
+    \caption{Active ngrok terminal console showing HTTP request logs forwarded to port 8080}
+    \label{fig:ngrok_screenshot}
+\end{figure}
+
+
+\clearpage
+
+% ====================================================================
+% CONCLUSION
+% ====================================================================
+\section{Conclusion}
+
+The design and setup of a CI/CD pipeline for the CatchMyDream web application successfully demonstrate the integration of Git, Jenkins, SonarQube, Trivy, Docker, and Webhooks into a seamless DevOps workflow.
+
+\subsection{Key Achievements}
+\begin{itemize}
+    \item \textbf{Successful Automation:} The entire cycle from source code commits to containerized staging execution is automated, removing manual setup tasks.
+    \item \textbf{Enhanced Code Security:} SonarQube identified and facilitated the correction of database credentials leaks in the Dockerfile, and Trivy scan integrations protected the system from vulnerable dependencies.
+    \item \textbf{Consistent Containers:} Docker container packaging ensures the application is runtime-portable and operates identically across various staging systems.
+\end{itemize}
+
+\subsection{Lessons Learnt}
+This project provided deep practical insights into:
+\begin{itemize}
+    \item Managing pipeline credentials and security keys securely rather than storing them in version control systems.
+    \item Exposing local network servers securely to public internet services using ngrok tunnels.
+    \item Reading static inspection logs from SonarQube and dependency vulnerability reports from Trivy to iteratively improve application security postures.
+\end{itemize}
+In summary, implementing DevOps practices has proven vital to ensure rapid deployment capability, consistency of environments, and robust code quality for modern full-stack web applications.
+
+\end{document}
