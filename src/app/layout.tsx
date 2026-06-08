@@ -23,7 +23,7 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
       <body
-        className="min-h-full bg-[#F8F9FA] text-[#212121] antialiased"
+        className="min-h-full bg-background text-foreground antialiased"
       >
         <ThemeProvider>
           <SiteHeader session={session} />

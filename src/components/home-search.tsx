@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, Map, Building2, GraduationCap, Banknote, MapPin } from "lucide-react";
 
 type CountryOption = {
   slug: string;
@@ -35,7 +35,6 @@ const COUNTRY_CURRENCIES: Record<string, { code: string; symbol: string }> = {
 };
 
 // Approximate USD -> local currency rates (1 USD = X local units).
-// Update these or replace with a live rates API if available.
 const CURRENCY_RATES: Record<string, number> = {
   singapore: 1.35,
   malaysia: 4.5,
@@ -70,7 +69,7 @@ export function HomeSearch({
   const currency = country ? COUNTRY_CURRENCIES[country] : { code: "USD", symbol: "$" };
   const conversionRate = country ? (CURRENCY_RATES[country] ?? 1) : 1;
 
-  // Filter cities by selected country (using both university data and country's top cities)
+  // Filter cities by selected country
   const cityOptions = React.useMemo(() => {
     if (!country) return [];
     const selectedCountryObj = countries.find(c => c.slug === country);
@@ -83,7 +82,7 @@ export function HomeSearch({
       .sort();
   }, [country, countries, universities]);
 
-  // When country changes, reset city and deeper fields
+  // When country changes, reset deep fields
   React.useEffect(() => {
     if (city) {
       const isValid = cityOptions.includes(city);
@@ -108,8 +107,6 @@ export function HomeSearch({
     return filtered;
   }, [country, city, universities]);
 
-  // Display universities in the UI: if a city is selected but there are none
-  // in that city, fall back to showing all universities in the country.
   const displayUniversities = React.useMemo(() => {
     if (!country) return universities;
     const byCountry = universities.filter(u => u.country.slug === country);
@@ -120,11 +117,9 @@ export function HomeSearch({
     return byCountry;
   }, [country, city, universities]);
 
-  // External university suggestions fetched from Google when none exist in DB
   const [externalUniversities, setExternalUniversities] = React.useState<Array<{ name: string; city?: string; id: string }>>([]);
   const [externalLoading, setExternalLoading] = React.useState(false);
 
-  // If no universities found for selected city, try fetching suggestions
   React.useEffect(() => {
     let cancelled = false;
     async function fetchExternal() {
@@ -151,7 +146,6 @@ export function HomeSearch({
 
   const optionsToShow = displayUniversities.length > 0 ? displayUniversities : externalUniversities;
 
-  // When city changes, reset university if not in new city
   React.useEffect(() => {
     if (university) {
       const isValid = filteredUniversities.some(u => u.slug === university);
@@ -165,14 +159,12 @@ export function HomeSearch({
     }
   }, [city, filteredUniversities, university]);
 
-  // Courses for selected university
   const courseOptions = React.useMemo(() => {
     if (!university) return [];
     const selected = universities.find(u => u.slug === university);
     return selected ? selected.courses : [];
   }, [university, universities]);
 
-  // When university changes, reset course if not valid
   React.useEffect(() => {
     if (course) {
       const isValid = courseOptions.some(c => c.slug === course);
@@ -185,7 +177,6 @@ export function HomeSearch({
     }
   }, [university, courseOptions, course]);
 
-  // When course changes, calculate budget options
   const budgetOptions = React.useMemo(() => {
     if (!university) return [];
     let selectedCourses = courseOptions;
@@ -193,12 +184,10 @@ export function HomeSearch({
       selectedCourses = courseOptions.filter(c => c.slug === course);
     }
     if (selectedCourses.length === 0) return [];
-    // Extract unique tuition fees and sort them
     const fees = Array.from(new Set(selectedCourses.map(c => c.tuitionFeeUsd))).sort((a, b) => a - b);
     return fees;
   }, [university, courseOptions, course]);
 
-  // Auto-select budget if there's only one
   React.useEffect(() => {
     if (budgetOptions.length === 1) {
       queueMicrotask(() => setBudget(budgetOptions[0].toString()));
@@ -210,188 +199,108 @@ export function HomeSearch({
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     const sp = new URLSearchParams();
     if (country) sp.set("country", country);
     if (city) sp.set("city", city);
     if (university) sp.set("university", university);
     if (course) sp.set("course", course);
     if (budget) sp.set("budget", budget);
-
     router.push(`/search?${sp.toString()}`);
   };
 
   return (
-    <div>
-      <form className="space-y-4" onSubmit={onSubmit}>
-        {/* Country Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-[#212121] mb-2">
-            Preferred Country
-          </label>
+    <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
+      <form className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 relative z-10" onSubmit={onSubmit}>
+        
+        {/* Country */}
+        <div className="relative group lg:col-span-1">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Map className={`w-4 h-4 ${country ? 'text-indigo-400' : 'text-zinc-500'} transition-colors`} />
+          </div>
           <select
-            className={`w-full h-12 rounded-xl border-2 bg-white px-4 text-[#212121] outline-none transition ${
-              focused === "country"
-                ? "border-indigo-500 ring-2 ring-indigo-500/30"
-                : "border-zinc-300 focus:border-indigo-500"
-            }`}
-            name="country"
+            className="w-full h-12 rounded-xl appearance-none glass-input pl-10 pr-4 text-sm transition-all focus:ring-2 focus:ring-indigo-500 cursor-pointer"
             value={country}
             onChange={(e) => setCountry(e.target.value)}
-            onFocus={() => setFocused("country")}
-            onBlur={() => setFocused(null)}
           >
-            <option value="">Select a country...</option>
+            <option value="" className="text-zinc-800">Country</option>
             {countries.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
+              <option key={c.slug} value={c.slug} className="text-zinc-800">{c.name}</option>
             ))}
           </select>
         </div>
 
-        {/* City Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-[#212121] mb-2">
-            Select City/State
-          </label>
+        {/* City */}
+        <div className="relative group lg:col-span-1">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <MapPin className={`w-4 h-4 ${city ? 'text-cyan-400' : 'text-zinc-500'} transition-colors`} />
+          </div>
           <select
-            className={`w-full h-12 rounded-xl border-2 bg-white px-4 text-[#212121] outline-none transition ${
-              focused === "city"
-                ? "border-indigo-500 ring-2 ring-indigo-500/30"
-                : "border-zinc-300 focus:border-indigo-500"
-            } disabled:opacity-50`}
-            name="city"
+            className="w-full h-12 rounded-xl appearance-none glass-input pl-10 pr-4 text-sm transition-all focus:ring-2 focus:ring-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            onFocus={() => setFocused("city")}
-            onBlur={() => setFocused(null)}
             disabled={!country || cityOptions.length === 0}
           >
-            <option value="">
-              {!country ? "Select a country first..." : cityOptions.length === 0 ? "No cities available" : "Any City / Select..."}
+            <option value="" className="text-zinc-800">
+              {!country ? "City (Requires Country)" : cityOptions.length === 0 ? "No cities" : "Any City"}
             </option>
             {cityOptions.map((cName) => (
-              <option key={cName} value={cName}>
-                {cName}
-              </option>
+              <option key={cName} value={cName} className="text-zinc-800">{cName}</option>
             ))}
           </select>
         </div>
 
-        {/* University Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-[#212121] mb-2">
-            Select University
-          </label>
+        {/* University */}
+        <div className="relative group lg:col-span-1">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Building2 className={`w-4 h-4 ${university ? 'text-purple-400' : 'text-zinc-500'} transition-colors`} />
+          </div>
           <select
-            className={`w-full h-12 rounded-xl border-2 bg-white px-4 text-[#212121] outline-none transition ${
-              focused === "university"
-                ? "border-indigo-500 ring-2 ring-indigo-500/30"
-                : "border-zinc-300 focus:border-indigo-500"
-            } disabled:opacity-50`}
-            name="university"
+            className="w-full h-12 rounded-xl appearance-none glass-input pl-10 pr-4 text-sm transition-all focus:ring-2 focus:ring-purple-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             value={university}
             onChange={(e) => setUniversity(e.target.value)}
-            onFocus={() => setFocused("university")}
-            onBlur={() => setFocused(null)}
             disabled={!country}
           >
-            <option value="">
-              {!country
-                ? "Select a country first..."
-                : city && filteredUniversities.length === 0
-                ? "No universities in selected city — showing all in country"
-                : displayUniversities.length === 0
-                ? "No universities available"
-                : "Select a university..."
-              }
+            <option value="" className="text-zinc-800">
+              {!country ? "University" : displayUniversities.length === 0 ? "No universities" : "Any University"}
             </option>
             {optionsToShow.map((u: any) => (
-              <option key={u.slug ?? u.id} value={u.slug ?? u.name}>
-                {u.name}
-              </option>
+              <option key={u.slug ?? u.id} value={u.slug ?? u.name} className="text-zinc-800">{u.name}</option>
             ))}
           </select>
         </div>
 
-        {/* Course Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-[#212121] mb-2">
-            Select Course
-          </label>
+        {/* Course */}
+        <div className="relative group lg:col-span-1">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <GraduationCap className={`w-4 h-4 ${course ? 'text-pink-400' : 'text-zinc-500'} transition-colors`} />
+          </div>
           <select
-            className={`w-full h-12 rounded-xl border-2 bg-white px-4 text-[#212121] outline-none transition ${
-              focused === "course"
-                ? "border-indigo-500 ring-2 ring-indigo-500/30"
-                : "border-zinc-300 focus:border-indigo-500"
-            } disabled:opacity-50`}
-            name="course"
+            className="w-full h-12 rounded-xl appearance-none glass-input pl-10 pr-4 text-sm transition-all focus:ring-2 focus:ring-pink-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             value={course}
             onChange={(e) => setCourse(e.target.value)}
-            onFocus={() => setFocused("course")}
-            onBlur={() => setFocused(null)}
             disabled={!university || courseOptions.length === 0}
           >
-            <option value="">
-              {!university ? "Select a university first..." : courseOptions.length === 0 ? "No courses available" : "Any Course / Select..."}
+            <option value="" className="text-zinc-800">
+              {!university ? "Course" : courseOptions.length === 0 ? "No courses" : "Any Course"}
             </option>
             {courseOptions.map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
+              <option key={c.slug} value={c.slug} className="text-zinc-800">{c.name}</option>
             ))}
           </select>
         </div>
 
-        {/* Budget Selection */}
-        <div>
-          <label className="block text-sm font-semibold text-[#212121] mb-2">
-            Course Budget per Year ({currency.code})
-          </label>
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-semibold">
-              {currency.symbol}
-            </span>
-            <select
-              className={`w-full h-12 rounded-xl border-2 bg-white pl-8 pr-4 text-[#212121] outline-none transition ${
-                focused === "budget"
-                  ? "border-indigo-500 ring-2 ring-indigo-500/30"
-                  : "border-zinc-300 focus:border-indigo-500"
-              } disabled:opacity-50`}
-              name="budget"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              onFocus={() => setFocused("budget")}
-              onBlur={() => setFocused(null)}
-              disabled={!university || budgetOptions.length === 0}
-            >
-              <option value="">
-                {!university ? "Select a university first..." : budgetOptions.length === 0 ? "No budget info available" : "Select a budget..."}
-              </option>
-              {budgetOptions.map((b) => (
-                <option key={b} value={b}>
-                  {(Math.round(b * conversionRate)).toLocaleString()} {currency.code}
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Submit */}
+        <div className="lg:col-span-1">
+          <button
+            type="submit"
+            className="w-full h-12 rounded-xl flex items-center justify-center gap-2 bg-indigo-500 text-white font-semibold shadow-[0_0_20px_rgba(99,102,241,0.4)] transition-all hover:bg-indigo-400 hover:shadow-[0_0_30px_rgba(99,102,241,0.6)] hover:-translate-y-0.5 active:scale-95"
+          >
+            <Search className="w-4 h-4" />
+            <span className="hidden lg:inline">Search</span>
+            <span className="lg:hidden">Find Programs</span>
+          </button>
         </div>
-
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 text-white font-semibold transition hover:shadow-lg hover:shadow-indigo-500/50 active:scale-95"
-        >
-          <Search className="w-4 h-4" />
-          Search Results
-        </button>
       </form>
-
-      <p className="mt-4 text-xs text-zinc-500 text-center">
-        Fill in any or all fields to find universities, accommodations, and jobs
-      </p>
     </div>
   );
 }
-
